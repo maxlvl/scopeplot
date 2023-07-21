@@ -35,14 +35,14 @@ def _get_weights(N):
     if abs(int(N)) != N or N == 0:
         raise ValueError("N must be a positive integer")
 
-    den = 2*N
+    den = 2 * N
 
     if N % 2:  # odd
-        num = np.concatenate((arange(2, 2*N + 1, 2), arange(2*N - 2, 0, -2)))
+        num = np.concatenate((arange(2, 2 * N + 1, 2), arange(2 * N - 2, 0, -2)))
     else:  # even
-        num = np.concatenate((arange(1, 2*N, 2), arange(2*N - 1, 0, -2)))
+        num = np.concatenate((arange(1, 2 * N, 2), arange(2 * N - 1, 0, -2)))
 
-    return num/den
+    return num / den
 
 
 def _ihist(a, bins, range_):
@@ -60,26 +60,27 @@ def _ihist(a, bins, range_):
     a = asarray(a)
 
     if a.ndim > 1:
-        raise AttributeError('a must be a series. it will not be flattened')
+        raise AttributeError("a must be a series. it will not be flattened")
 
     if (not np.isscalar(bins)) or (int(bins) != bins) or bins < 1:
         raise ValueError("`bins` should be a positive integer.")
 
     if a.size < 2 or a.size % 4 in {0, 3}:
-        raise ValueError('not a valid size with overlap: {}'.format(a.size))
+        raise ValueError("not a valid size with overlap: {}".format(a.size))
 
     mn, mx = [mi + 0.0 for mi in range_]  # Make float
 
     if a.min() < mn or a.max() > mx:
-        raise NotImplementedError("values outside of range_ are not yet "
-                                  "supported {} {}".format(a.min(), a.max()))
+        raise NotImplementedError(
+            "values outside of range_ are not yet "
+            "supported {} {}".format(a.min(), a.max())
+        )
 
-    if (mn >= mx):
-        raise AttributeError('max must be larger than '
-                             'min in range_ parameter.')
+    if mn >= mx:
+        raise AttributeError("max must be larger than " "min in range_ parameter.")
 
-    bin_edges = linspace(mn, mx, bins+1, endpoint=True)
-    bin_width = (mx - mn)/bins
+    bin_edges = linspace(mn, mx, bins + 1, endpoint=True)
+    bin_width = (mx - mn) / bins
 
     pairs = np.vstack((a[:-1], a[1:])).T
     lower = np.minimum(pairs[:, 0], pairs[:, 1])
@@ -88,7 +89,7 @@ def _ihist(a, bins, range_):
     bin_lower = np.searchsorted(bin_edges, lower)
     bin_upper = np.searchsorted(bin_edges, upper)
 
-    h = 1/(upper - lower)
+    h = 1 / (upper - lower)
 
     out = np.zeros(bins)
 
@@ -103,18 +104,18 @@ def _ihist(a, bins, range_):
             if lower[n] == bin_edges[lo]:
                 # straddles 2 bins
                 try:
-                    out[lo-1] += w * 0.5
-                    out[lo]   += w * 0.5
+                    out[lo - 1] += w * 0.5
+                    out[lo] += w * 0.5
                 except IndexError:
-                    raise NotImplementedError('Values on edge of range_')
+                    raise NotImplementedError("Values on edge of range_")
                     # TODO: Could handle this with more ifthens,
                     # but should be a smarter way
             else:
-                out[lo-1] += w
+                out[lo - 1] += w
         else:
-            out[lo-1]    += w * h[n] * (bin_edges[lo] - lower[n])
-            out[lo:hi-1] += w * h[n] * bin_width
-            out[hi-1]    += w * h[n] * (upper[n] - bin_edges[hi-1])
+            out[lo - 1] += w * h[n] * (bin_edges[lo] - lower[n])
+            out[lo : hi - 1] += w * h[n] * bin_width
+            out[hi - 1] += w * h[n] * (upper[n] - bin_edges[hi - 1])
 
     return out
 
@@ -151,23 +152,23 @@ def scopeplot(x, width=800, height=400, range_=None, cmap=None, plot=None):
     """
 
     if cmap is None:
-        cmap = 'gray'
+        cmap = "gray"
 
     x = asarray(x)
 
     N = len(x)
 
     # Add zeros to end to reduce circular Gibbs effects
-    MIN_PAD = 5   # TODO: what should this be?  Seems subjective.
+    MIN_PAD = 5  # TODO: what should this be?  Seems subjective.
 
     # Make input an optimal length for fast processing
     pad_amount = next_fast_len(N + MIN_PAD) - N
 
-    x = pad(x, (0, pad_amount), 'constant')
+    x = pad(x, (0, pad_amount), "constant")
 
     # Resample such that signal evenly divides into chunks of equal length
-    new_size = int(round(_ceildiv(RS*N, width) * width / N * len(x)))
-    print('new size: {}'.format(new_size))
+    new_size = int(round(_ceildiv(RS * N, width) * width / N * len(x)))
+    print("new size: {}".format(new_size))
 
     x = resample(x, new_size)
 
@@ -179,43 +180,49 @@ def scopeplot(x, width=800, height=400, range_=None, cmap=None, plot=None):
     elif np.size(range_) == 2:
         xmin, xmax = range_
     else:
-        raise ValueError('range_ not understood')
+        raise ValueError("range_ not understood")
 
     spp = _ceildiv(N * RS, width)  # samples per pixel
-    norm = 1/spp
+    norm = 1 / spp
 
     # Pad some zeros at beginning for overlap
-    x = pad(x, (spp//2, 0), 'constant')
+    x = pad(x, (spp // 2, 0), "constant")
 
     X = np.empty((width, height))
 
     if spp % 2:  # N is odd
-        chunksize = 2*spp  # (even)
+        chunksize = 2 * spp  # (even)
     else:  # N is even
-        chunksize = 2*spp + 1  # (odd)
-    print('spp: {}, chunk size: {}'.format(spp, chunksize))
+        chunksize = 2 * spp + 1  # (odd)
+    print("spp: {}, chunk size: {}".format(spp, chunksize))
 
     for n in range(0, width):
-        chunk = x[n*spp:n*spp+chunksize]
+        chunk = x[n * spp : n * spp + chunksize]
         assert len(chunk)  # don't send empties
         try:
             h = _ihist(chunk, bins=height, range_=(xmin, xmax))
         except ValueError:
-            print('argh', len(chunk))
+            print("argh", len(chunk))
         else:
             X[n] = h * norm
 
     assert np.amax(X) <= 1.001, np.amax(X)
 
-    X = X**(0.4)  # TODO: SUBJECTIVE
+    X = X ** (0.4)  # TODO: SUBJECTIVE
 
     if isinstance(plot, str):
-        plt.imsave(plot, X.T, cmap=cmap, origin='lower', format='png')
+        plt.imsave(plot, X.T, cmap=cmap, origin="lower", format="png")
     elif plot:
         fig = plt.figure()
         ax = fig.add_subplot(1, 1, 1)
-        ax.imshow(X.T, origin='lower', aspect='auto', cmap=cmap,
-                  extent=(0, len(x), xmin, xmax), interpolation='nearest')
+        ax.imshow(
+            X.T,
+            origin="lower",
+            aspect="auto",
+            cmap=cmap,
+            extent=(0, len(x), xmin, xmax),
+            interpolation="nearest",
+        )
     #              norm=LogNorm(vmin=0.01, vmax=300))
     else:
         return X
@@ -232,27 +239,30 @@ def test_get_weights():
     assert_raises(ValueError, _get_weights, -3)
     assert_raises(ValueError, _get_weights, 0)
 
-    assert_allclose(_get_weights(1), [2/2])
-    assert_allclose(_get_weights(2), [1/4, 3/4, 3/4, 1/4])
-    assert_allclose(_get_weights(3), [2/6, 4/6, 6/6, 4/6, 2/6])
-    assert_allclose(_get_weights(4), [1/8, 3/8, 5/8, 7/8, 7/8, 5/8, 3/8, 1/8])
-    assert_allclose(_get_weights(5), [2/10, 4/10, 6/10, 8/10, 10/10,
-                                      8/10, 6/10, 4/10, 2/10])
+    assert_allclose(_get_weights(1), [2 / 2])
+    assert_allclose(_get_weights(2), [1 / 4, 3 / 4, 3 / 4, 1 / 4])
+    assert_allclose(_get_weights(3), [2 / 6, 4 / 6, 6 / 6, 4 / 6, 2 / 6])
+    assert_allclose(
+        _get_weights(4), [1 / 8, 3 / 8, 5 / 8, 7 / 8, 7 / 8, 5 / 8, 3 / 8, 1 / 8]
+    )
+    assert_allclose(
+        _get_weights(5),
+        [2 / 10, 4 / 10, 6 / 10, 8 / 10, 10 / 10, 8 / 10, 6 / 10, 4 / 10, 2 / 10],
+    )
 
     assert_allclose(np.sum(_get_weights(101)), 101)
     assert_allclose(np.sum(_get_weights(10111)), 10111)
 
 
 def test_ihist(SLOW_TESTS=False):
-    from numpy.testing import (assert_array_equal, assert_raises,
-                               assert_allclose)
+    from numpy.testing import assert_array_equal, assert_raises, assert_allclose
 
     # Invalid bins=
-    assert_raises(ValueError, _ihist, [],     (10, 4), (0, 10))
+    assert_raises(ValueError, _ihist, [], (10, 4), (0, 10))
     assert_raises(ValueError, _ihist, [1, 2], (10, 4), (0, 10))
-    assert_raises(ValueError, _ihist, [],     -5, (0, 10))
+    assert_raises(ValueError, _ihist, [], -5, (0, 10))
     assert_raises(ValueError, _ihist, [1, 2], -5, (0, 10))
-    assert_raises(ValueError, _ihist, [],     5.7, (0, 10))
+    assert_raises(ValueError, _ihist, [], 5.7, (0, 10))
     assert_raises(ValueError, _ihist, [1, 2], 5.7, (0, 10))
 
     # Incorrect number of samples with overlap
@@ -270,22 +280,25 @@ def test_ihist(SLOW_TESTS=False):
     # 1 sample per pixel = 1 segment per pixel
     assert_array_equal(_ihist([2, 3], 3, (0, 3)), [0, 0, 1])
 
-    assert_allclose(_ihist([3.8, 5.8], 7, (3.5, 7)),
-                    [0.1, 0.25, 0.25, 0.25, 0.15, 0, 0])
+    assert_allclose(
+        _ihist([3.8, 5.8], 7, (3.5, 7)), [0.1, 0.25, 0.25, 0.25, 0.15, 0, 0]
+    )
 
-    assert_allclose(_ihist([5.8, 3.8], 7, (3.5, 7)),
-                    [0.1, 0.25, 0.25, 0.25, 0.15, 0, 0])
+    assert_allclose(
+        _ihist([5.8, 3.8], 7, (3.5, 7)), [0.1, 0.25, 0.25, 0.25, 0.15, 0, 0]
+    )
 
-    assert_allclose(_ihist([0, 1], 5, (0, 1)), [1/5, 1/5, 1/5, 1/5, 1/5])
+    assert_allclose(_ihist([0, 1], 5, (0, 1)), [1 / 5, 1 / 5, 1 / 5, 1 / 5, 1 / 5])
 
-    assert_array_equal(_ihist([5.5, 7], 10, (0, 10)),
-                       [0, 0, 0, 0, 0, 1/3, 2/3, 0, 0, 0])
+    assert_array_equal(
+        _ihist([5.5, 7], 10, (0, 10)), [0, 0, 0, 0, 0, 1 / 3, 2 / 3, 0, 0, 0]
+    )
 
-    assert_array_equal(_ihist([0, 1], 5, (0, 5)),     [1, 0, 0, 0, 0])
-    assert_array_equal(_ihist([3, 2], 5, (0, 5)),     [0, 0, 1, 0, 0])
-    assert_array_equal(_ihist([4, 5], 5, (0, 5)),     [0, 0, 0, 0, 1])
-    assert_array_equal(_ihist([0.5, 2.5], 3, (0, 3)), [1/4, 1/2, 1/4])
-    assert_array_equal(_ihist([0.5, 1.5], 3, (0, 3)), [1/2, 1/2, 0])
+    assert_array_equal(_ihist([0, 1], 5, (0, 5)), [1, 0, 0, 0, 0])
+    assert_array_equal(_ihist([3, 2], 5, (0, 5)), [0, 0, 1, 0, 0])
+    assert_array_equal(_ihist([4, 5], 5, (0, 5)), [0, 0, 0, 0, 1])
+    assert_array_equal(_ihist([0.5, 2.5], 3, (0, 3)), [1 / 4, 1 / 2, 1 / 4])
+    assert_array_equal(_ihist([0.5, 1.5], 3, (0, 3)), [1 / 2, 1 / 2, 0])
 
     # Single line appears in all one bin
     assert_array_equal(_ihist([0.5, 0.5], 3, (0, 1)), [0, 1, 0])
@@ -296,24 +309,26 @@ def test_ihist(SLOW_TESTS=False):
 
     # Multiple segments, same value
     # 2 samples per pixel -> 5 samples per hist
-    assert_allclose(_ihist(0.5*np.ones(5), 3, (0, 1)), [0, 1/4+3/4+3/4+1/4, 0])
+    assert_allclose(
+        _ihist(0.5 * np.ones(5), 3, (0, 1)), [0, 1 / 4 + 3 / 4 + 3 / 4 + 1 / 4, 0]
+    )
 
     # 3 samples per pixel -> 6 samples per hist
-    assert_allclose(_ihist(0.5*np.ones(6), 3, (0, 1)),
-                    [0, 1/3+2/3+1+2/3+1/3, 0])
+    assert_allclose(
+        _ihist(0.5 * np.ones(6), 3, (0, 1)), [0, 1 / 3 + 2 / 3 + 1 + 2 / 3 + 1 / 3, 0]
+    )
 
     # 14 samples per pixel -> 29 samples per hist
-    assert_allclose(_ihist(0.5*np.ones(29), 3, (0, 1)), [0, 14, 0])
-    assert_allclose(_ihist(0.5*np.ones(29), 2, (0, 1)), [7, 7])
+    assert_allclose(_ihist(0.5 * np.ones(29), 3, (0, 1)), [0, 14, 0])
+    assert_allclose(_ihist(0.5 * np.ones(29), 2, (0, 1)), [7, 7])
 
     # 15 samples per pixel -> 30 samples per hist
-    assert_allclose(_ihist(0.5*np.ones(30), 3, (0, 1)), [0, 15, 0])
-    assert_allclose(_ihist(0.5*np.ones(30), 2, (0, 1)), [7.5, 7.5])
+    assert_allclose(_ihist(0.5 * np.ones(30), 3, (0, 1)), [0, 15, 0])
+    assert_allclose(_ihist(0.5 * np.ones(30), 2, (0, 1)), [7.5, 7.5])
 
     # Multiple segments, linear
     # 2 samples per pixel
-    assert_allclose(_ihist([5, 4, 3, 2, 1], 4, (1, 5)),
-                    [1/4, 3/4, 3/4, 1/4])
+    assert_allclose(_ihist([5, 4, 3, 2, 1], 4, (1, 5)), [1 / 4, 3 / 4, 3 / 4, 1 / 4])
 
     # TODO: WRITE MORE
 
@@ -323,29 +338,29 @@ def test_ihist(SLOW_TESTS=False):
         S = 100
     else:
         S = 1
-    for N in np.random.exponential(100000, size=S).astype('int'):
+    for N in np.random.exponential(100000, size=S).astype("int"):
         if SLOW_TESTS:
-            print(N, end=', ')
+            print(N, end=", ")
         bins = np.random.random_integers(1, 3000, 1)[0]  # numpy int32
         if N % 2:  # N is odd
-            chunksize = 2*N  # (even)
+            chunksize = 2 * N  # (even)
         else:  # N is even
-            chunksize = 2*N + 1  # (odd)
+            chunksize = 2 * N + 1  # (odd)
         a = np.random.randn(chunksize)
-        lower = np.amin(a) - 15*np.random.rand(1)[0]
-        upper = np.amax(a) + 14*np.random.rand(1)[0]
+        lower = np.amin(a) - 15 * np.random.rand(1)[0]
+        upper = np.amax(a) + 14 * np.random.rand(1)[0]
         assert_allclose(N, sum(_ihist(a, bins, (lower, upper))))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from numpy import sin
 
     t = linspace(0, 20, 48000)
-    sig = sin(t**3)*sin(t)
+    sig = sin(t**3) * sin(t)
 
-    plt.figure()
+    plt.figure(figsize=(15, 5))
     plt.margins(0)
     plt.ylim(-2, 2)
     plt.plot(t, sig)
 
-    scopeplot(sig, range_=2, plot=True)
+    scopeplot(sig, range_=2, plot="test.jpg")
